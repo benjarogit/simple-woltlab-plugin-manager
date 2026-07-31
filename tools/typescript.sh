@@ -211,118 +211,45 @@ else
                 
                 print_success "Validierung: ${TS_COUNT} TypeScript → ${JS_COUNT} JavaScript Dateien"
                 
-                # Erstelle .min.js Dateien für Produktionsmodus
-                # WICHTIG: WoltLab hängt bei ENABLE_DEBUG_MODE=0 automatisch .min.js an
-                # {js file='PasswordDialog'} wird zu:
-                #   - PasswordDialog.js (ENABLE_DEBUG_MODE=1)
-                #   - PasswordDialog.min.js (ENABLE_DEBUG_MODE=0)
-                # Daher müssen wir BEIDE Dateien bereitstellen!
-                # Für kleine Dateien kopieren wir einfach .js als .min.js (nicht wirklich minified)
-                # AUSNAHME: 3rdParty Bibliotheken (wie d3.js) bekommen KEINE .min.js Version
-                print_info "Erstelle/Aktualisiere .min.js Dateien für Produktionsmodus..."
+                # Eine .min.js braucht nur, was per {js file='X'} eingebunden wird: bei
+                # ENABLE_DEBUG_MODE=0 haengt JsFunctionTemplatePlugin .min an und fragt
+                # X.min.js an. Solche Dateien liegen direkt in js/.
+                # Module in Unterordnern laedt RequireJS ueber ihre Modul-ID immer als .js,
+                # eine .min.js dort wird nie angefragt. WoltLab minifiziert dort auch nicht
+                # pro Modul, sondern buendelt alle Module (extra/_buildExternal.js).
+                print_info "Prüfe .min.js Dateien für {js}-Einbindungen in js/..."
                 MIN_JS_COUNT=0
-                MISSING_MIN_JS=()
-                UNSYNCED_FILES=()
                 if [ -d "js" ]; then
-                    # WICHTIG: Process Substitution verwenden statt Pipe, damit MIN_JS_COUNT erhalten bleibt
-                    # Alternative: Array verwenden, um Subshell-Problem zu vermeiden
-                    mapfile -t jsfiles < <(find js -name "*.js" ! -name "*.min.js" -type f)
+                    mapfile -t jsfiles < <(find js -maxdepth 1 -name "*.js" ! -name "*.min.js" -type f)
                     for jsfile in "${jsfiles[@]}"; do
-                        # Überspringe 3rdParty Bibliotheken (d3.js, topojson, etc.)
-                        if echo "$jsfile" | grep -q "3rdParty"; then
+                        minfile="${jsfile%.js}.min.js"
+                        # eine echt minifizierte Datei nicht durch eine Kopie ersetzen
+                        if [ -f "$minfile" ] && ! diff -q "$jsfile" "$minfile" > /dev/null 2>&1; then
+                            print_info "$(basename "$minfile") ist minifiziert und bleibt unverändert"
                             continue
                         fi
-                        minfile="${jsfile%.js}.min.js"
-                        # Immer aktualisieren, damit .min.js mit .js synchron bleibt
-                        # -f: Überschreibe vorhandene Dateien ohne Nachfrage
-                        cp -f "$jsfile" "$minfile"
-                        if [ $? -eq 0 ]; then
-                            MIN_JS_COUNT=$((MIN_JS_COUNT + 1))
-                        else
+                        if ! cp -f "$jsfile" "$minfile"; then
                             print_error "Fehler beim Kopieren: $jsfile → $minfile"
                             exit 1
                         fi
+                        MIN_JS_COUNT=$((MIN_JS_COUNT + 1))
                     done
-                    
-                    # Prüfe, ob alle .js Dateien eine entsprechende .min.js Datei haben
-                    print_info "Prüfe Synchronisation von .js und .min.js Dateien..."
-                    mapfile -t all_jsfiles < <(find js -name "*.js" ! -name "*.min.js" ! -path "*/3rdParty/*" -type f)
-                    for jsfile in "${all_jsfiles[@]}"; do
-                        minfile="${jsfile%.js}.min.js"
-                        if [ ! -f "$minfile" ]; then
-                            MISSING_MIN_JS+=("$minfile (für $jsfile)")
-                        else
-                            # Prüfe ob Dateien gleich sind (mit diff)
-                            if ! diff -q "$jsfile" "$minfile" > /dev/null 2>&1; then
-                                UNSYNCED_FILES+=("$jsfile ↔ $minfile")
-                            fi
-                        fi
-                    done
-                    
-                    # Prüfe, ob alle .min.js Dateien eine entsprechende .js Datei haben
-                    mapfile -t all_minfiles < <(find js -name "*.min.js" ! -path "*/3rdParty/*" -type f)
-                    for minfile in "${all_minfiles[@]}"; do
-                        jsfile="${minfile%.min.js}.js"
-                        if [ ! -f "$jsfile" ]; then
-                            MISSING_MIN_JS+=("$minfile (ohne entsprechende .js Datei)")
-                        fi
-                    done
-                fi
-                
-                # Ausgabe der Ergebnisse
-                if [ "$MIN_JS_COUNT" -gt 0 ]; then
-                    print_success "${MIN_JS_COUNT} .min.js Dateien erstellt/aktualisiert"
-                else
-                    print_success "Keine .min.js Dateien zu aktualisieren"
-                fi
-                
-                # Prüfe auf fehlende .min.js Dateien
-                if [ ${#MISSING_MIN_JS[@]} -gt 0 ]; then
-                    print_error "FEHLER: ${#MISSING_MIN_JS[@]} .min.js Datei(en) fehlen:"
-                    for missing in "${MISSING_MIN_JS[@]}"; do
-                        echo -e "   - ${RED}${missing}${NC}"
-                    done
-                    echo ""
-                fi
-                
-                # Prüfe auf nicht-synchronisierte Dateien
-                if [ ${#UNSYNCED_FILES[@]} -gt 0 ]; then
-                    print_error "KRITISCHER FEHLER: ${#UNSYNCED_FILES[@]} Datei(en) sind nicht synchronisiert!"
-                    for unsynced in "${UNSYNCED_FILES[@]}"; do
-                        echo -e "   - ${RED}${unsynced}${NC}"
-                    done
-                    print_error ".js und .min.js Dateien MÜSSEN identisch sein!"
-                    print_error "Build wird abgebrochen!"
-                    echo ""
-                    exit 1
-                fi
-                
-                # KRITISCHE PRÜFUNG: Verifiziere dass ALLE .js Dateien identische .min.js Dateien haben
-                print_info "Finale Validierung: Prüfe dass alle .js und .min.js Dateien identisch sind..."
-                VALIDATION_ERRORS=0
-                mapfile -t final_jsfiles < <(find js -name "*.js" ! -name "*.min.js" ! -path "*/3rdParty/*" -type f)
-                for jsfile in "${final_jsfiles[@]}"; do
-                    minfile="${jsfile%.js}.min.js"
-                    if [ ! -f "$minfile" ]; then
-                        print_error "$minfile fehlt für $jsfile"
-                        VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
-                    elif ! diff -q "$jsfile" "$minfile" > /dev/null 2>&1; then
-                        print_error "$jsfile und $minfile sind NICHT identisch!"
-                        VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
+
+                    mapfile -t stale_minfiles < <(find js -mindepth 2 -name "*.min.js" ! -path "*/3rdParty/*" -type f)
+                    if [ ${#stale_minfiles[@]} -gt 0 ]; then
+                        print_warning "${#stale_minfiles[@]} .min.js Datei(en) in Modul-Ordnern; RequireJS fragt sie nie an:"
+                        for stale in "${stale_minfiles[@]}"; do
+                            echo -e "   - ${YELLOW}${stale}${NC}"
+                        done
                     fi
-                done
-                
-                if [ "$VALIDATION_ERRORS" -gt 0 ]; then
-                    print_error "KRITISCHER FEHLER: ${VALIDATION_ERRORS} Validierungsfehler gefunden!"
-                    print_error "Build wird abgebrochen!"
-                    echo ""
-                    exit 1
                 fi
-                
-                if [ ${#MISSING_MIN_JS[@]} -eq 0 ] && [ ${#UNSYNCED_FILES[@]} -eq 0 ] && [ "$VALIDATION_ERRORS" -eq 0 ]; then
-                    print_success "Alle .js und .min.js Dateien sind synchronisiert und identisch"
-                    echo ""
+
+                if [ "$MIN_JS_COUNT" -gt 0 ]; then
+                    print_success "${MIN_JS_COUNT} .min.js Datei(en) aus js/ aktualisiert"
+                else
+                    print_success "Keine .min.js Datei nötig"
                 fi
+                echo ""
             else
                 print_error "TypeScript-Kompilierung fehlgeschlagen!"
                 exit 1

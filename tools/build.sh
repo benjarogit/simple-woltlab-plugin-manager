@@ -326,24 +326,31 @@ if [ "$DRY_RUN" -eq 0 ] && [ -d "temp_edit" ]; then
             fi
             print_success "Alle .ts und .js Dateien sind synchronisiert"
 
-            print_info "Pruefe dass alle .js und .min.js Dateien identisch sind..."
-            JS_MIN_JS_ERRORS=0
-            mapfile -t all_js_files < <(find temp_edit/js -name "*.js" ! -name "*.min.js" ! -path "*/3rdParty/*" -type f 2>/dev/null)
-            for js_file in "${all_js_files[@]}"; do
+            # nur Dateien direkt in js/ werden per {js file='X'} geladen und brauchen
+            # bei ENABLE_DEBUG_MODE=0 eine X.min.js; Module in Unterordnern laedt
+            # RequireJS immer als .js
+            print_info "Pruefe .min.js Dateien fuer {js}-Einbindungen in temp_edit/js/..."
+            JS_MIN_JS_MISSING=0
+            mapfile -t top_js_files < <(find temp_edit/js -maxdepth 1 -name "*.js" ! -name "*.min.js" -type f 2>/dev/null)
+            for js_file in "${top_js_files[@]}"; do
                 min_file="${js_file%.js}.min.js"
                 if [ ! -f "$min_file" ]; then
                     print_error "$min_file fehlt fuer $js_file"
-                    JS_MIN_JS_ERRORS=$((JS_MIN_JS_ERRORS + 1))
-                elif ! diff -q "$js_file" "$min_file" > /dev/null 2>&1; then
-                    print_error "$js_file und $min_file sind NICHT identisch!"
-                    JS_MIN_JS_ERRORS=$((JS_MIN_JS_ERRORS + 1))
+                    JS_MIN_JS_MISSING=$((JS_MIN_JS_MISSING + 1))
                 fi
             done
-            if [ "$JS_MIN_JS_ERRORS" -gt 0 ]; then
-                log_error_with_context "KRITISCHER FEHLER: ${JS_MIN_JS_ERRORS} .js/.min.js Synchronisationsfehler gefunden!" ".js und .min.js Dateien MÜSSEN identisch sein!"
+            if [ "$JS_MIN_JS_MISSING" -gt 0 ]; then
+                log_error_with_context "${JS_MIN_JS_MISSING} .min.js Datei(en) fehlen!" "{js file='...'} laedt bei ENABLE_DEBUG_MODE=0 die .min.js Variante"
                 exit 1
             fi
-            print_success "Alle .js und .min.js Dateien sind identisch"
+            mapfile -t stale_min_files < <(find temp_edit/js -mindepth 2 -name "*.min.js" ! -path "*/3rdParty/*" -type f 2>/dev/null)
+            if [ ${#stale_min_files[@]} -gt 0 ]; then
+                print_warning "${#stale_min_files[@]} .min.js Datei(en) in Modul-Ordnern werden nie geladen:"
+                for stale in "${stale_min_files[@]}"; do
+                    echo -e "   - ${YELLOW}${stale}${NC}"
+                done
+            fi
+            print_success "Pruefung der .min.js Dateien abgeschlossen"
         elif [ -f "$CHECK_TS" ]; then
             # tsconfig without classic temp_edit/ts layout — still typecheck
             if ! bash "$CHECK_TS" "$(pwd)"; then
@@ -768,7 +775,6 @@ fi
 print_info "Pruefe TypeScript -> JavaScript Kompilierung..."
 TS_COUNT=0
 JS_MISSING=0
-MINJS_MISSING=0
 MISSING_FILES=()
 
 if [ -d "temp_edit/ts" ]; then
@@ -782,7 +788,6 @@ if [ -d "temp_edit/ts" ]; then
         # Konvertiere .ts Pfad zu .js Pfad (temp_edit/ts/... -> temp_edit/js/...)
         js_file="${ts_file/\/ts\//\/js\/}"
         js_file="${js_file%.ts}.js"
-        minjs_file="${js_file%.js}.min.js"
         
         # Prüfe ob .js existiert
         if [ ! -f "$js_file" ]; then
@@ -790,18 +795,11 @@ if [ -d "temp_edit/ts" ]; then
             MISSING_FILES+=("$js_file")
             JS_MISSING=$((JS_MISSING + 1))
         fi
-        
-        # Prüfe ob .min.js existiert
-        if [ ! -f "$minjs_file" ]; then
-            print_error "Minified JavaScript fehlt: $minjs_file"
-            MISSING_FILES+=("$minjs_file")
-            MINJS_MISSING=$((MINJS_MISSING + 1))
-        fi
     done < <(find temp_edit/ts -type f -name "*.ts" -print0)
     
-    if [ $JS_MISSING -gt 0 ] || [ $MINJS_MISSING -gt 0 ]; then
+    if [ $JS_MISSING -gt 0 ]; then
         echo ""
-        log_error_with_context "$JS_MISSING .js und $MINJS_MISSING .min.js Dateien fehlen!" "TypeScript-Kompilierung unvollständig"
+        log_error_with_context "$JS_MISSING .js Dateien fehlen!" "TypeScript-Kompilierung unvollständig"
         print_error "Fehlende Dateien:"
         for missing in "${MISSING_FILES[@]}"; do
             echo "  - $missing"
@@ -810,7 +808,7 @@ if [ -d "temp_edit/ts" ]; then
         print_error "Führe 'bash tools/typescript.sh' aus, um die fehlenden Dateien zu erstellen"
         VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
     else
-        print_success "Alle $TS_COUNT TypeScript-Dateien korrekt kompiliert (.js und .min.js vorhanden)"
+        print_success "Alle $TS_COUNT TypeScript-Dateien korrekt kompiliert"
     fi
 fi
 
