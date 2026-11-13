@@ -173,9 +173,9 @@ else
         log "INFO" "Package-Name: $PACKAGE_NAME"
 
         # Package-Name-Format prüfen
-        if [[ ! "$PACKAGE_NAME" =~ ^com\.[a-z0-9]+\.[a-z0-9]+(\.[a-z0-9]+)*$ ]]; then
+        if [[ ! "$PACKAGE_NAME" =~ ^[a-z][a-z0-9]*\.[a-z0-9]+\.[a-z0-9]+(\.[a-z0-9]+)*$ ]]; then
             print_warning "Package-Name entspricht möglicherweise nicht dem Standard-Format!"
-            echo -e "   ${YELLOW}Erwartetes Format:${NC} com.domain.pluginname"
+            echo -e "   ${YELLOW}Erwartetes Format:${NC} tld.domain.pluginname"
             echo -e "   ${YELLOW}Gefundener Name:${NC} $PACKAGE_NAME"
             log "WARNING" "Package-Name-Format möglicherweise nicht standardkonform: $PACKAGE_NAME"
             WARNINGS=$((WARNINGS + 1))
@@ -197,7 +197,11 @@ else
     fi
 
     # Minversion-Validierung (Plugin Store Requirement)
-    MINVERSION=$(grep -oP '<requiredpackage minversion="\K[^"]+' $PACKAGE_XML 2>/dev/null | head -1) || MINVERSION=""
+    if ! MINVERSION=$(python3 "$TOOLS_DIR/package-core-requirement.py" "$PACKAGE_XML"); then
+        print_error "WCF-Abhängigkeit konnte nicht gelesen werden"
+        ERRORS=$((ERRORS + 1))
+        MINVERSION=""
+    fi
 
     if [ -n "$MINVERSION" ]; then
         echo -e "   ${CYAN}Minversion:${NC} $MINVERSION"
@@ -206,6 +210,9 @@ else
         if [[ "$MINVERSION" =~ ^6\.[0-2]\. ]]; then
             print_success "Minversion ist WoltLab 6.0/6.1/6.2 kompatibel"
             log "INFO" "Minversion ist WoltLab 6.0/6.1/6.2 kompatibel"
+        elif [[ "$MINVERSION" =~ ^6\.3\. ]]; then
+            print_info "WoltLab 6.3 Zielversion erkannt; Entwicklungsbuild/API-Kompatibilität separat prüfen"
+            log "INFO" "WoltLab 6.3 erkannt; keine automatische Release-/API-Freigabe"
         elif [[ "$MINVERSION" =~ ^7\. ]]; then
             print_warning "Minversion 7.x - WoltLab 7 ist noch nicht released"
             echo -e "   ${YELLOW}Plugin Store akzeptiert nur unterstützte Versionen!${NC}"
@@ -742,7 +749,7 @@ if [ -n "$EXTRACTED_DIR" ]; then
 
     # Check 4: console.log in JavaScript
     while IFS= read -r -d '' js_file; do
-        if grep -q 'console\.log\(' "$js_file"; then
+        if grep -qF 'console.log(' "$js_file"; then
             print_warning "console.log() in $(basename "$js_file")"
             echo -e "   ${YELLOW}→${NC} Entferne console.log() Statements vor Release"
             log "WARNING" "console.log in $(basename "$js_file")"

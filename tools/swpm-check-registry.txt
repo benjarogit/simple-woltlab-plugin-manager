@@ -27,3 +27,6 @@ language-address|warn|check-language-address.py|language|DE Anrede Sie/Du Konsis
 first-release-hygiene|warn|check-first-release-hygiene.py|always|First-Release 1.0.0 Hygiene (keine Update-Altlasten)
 package-descriptions|warn|check-package-descriptions.py|always|package.xml packagedescription (Default+de)
 empty-pack-dirs|fail|check-empty-pack-dirs.py|always|Leere Ordner unter files/ (landen in files.tar)
+
+acp-template-assets|fail|check-acp-template-assets.py|always|ACP template assets including required family dependencies
+page-option-gates|fail|check-page-option-gates.py|always|Page option access gates

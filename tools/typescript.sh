@@ -53,12 +53,29 @@ fi
 # HAUPTLOGIK
 #=====================================
 TEMP_EDIT_DIR=""
-for plugin_dir in "${MAIN_DIR}"/*; do
-    if [ -d "$plugin_dir" ] && [ -d "$plugin_dir/temp_edit" ] && [ -f "$plugin_dir/temp_edit/package.json" ]; then
-        TEMP_EDIT_DIR="$(cd "$plugin_dir/temp_edit" && pwd)"
-        break
-    fi
+WATCH_MODE=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --plugin)
+            if [ $# -lt 2 ]; then echo "--plugin requires a directory" >&2; exit 1; fi
+            TEMP_EDIT_DIR="$2"; shift 2 ;;
+        watch) WATCH_MODE="watch"; shift ;;
+        *) echo "Usage: $0 [--plugin DIRECTORY] [watch]" >&2; exit 1 ;;
+    esac
 done
+if [ -n "$TEMP_EDIT_DIR" ]; then
+    if [ -d "$TEMP_EDIT_DIR/temp_edit" ]; then TEMP_EDIT_DIR="$TEMP_EDIT_DIR/temp_edit"; fi
+    if [ ! -f "$TEMP_EDIT_DIR/package.json" ]; then
+        echo "Explicit plugin has no package.json: $TEMP_EDIT_DIR" >&2; exit 1
+    fi
+    TEMP_EDIT_DIR="$(cd "$TEMP_EDIT_DIR" && pwd)"
+else
+    for plugin_dir in "${MAIN_DIR}"/*; do
+        if [ -d "$plugin_dir/temp_edit" ] && [ -f "$plugin_dir/temp_edit/package.json" ]; then
+            TEMP_EDIT_DIR="$(cd "$plugin_dir/temp_edit" && pwd)"; break
+        fi
+    done
+fi
 
 if [ -z "$TEMP_EDIT_DIR" ]; then
     print_error "Kein temp_edit Verzeichnis mit package.json gefunden"
@@ -69,7 +86,7 @@ fi
 cd "${TEMP_EDIT_DIR}"
 
 # Parameter parsen
-WATCH_MODE="${1:-}"
+
 
 # Header anzeigen
 if [ "$WATCH_MODE" = "watch" ]; then

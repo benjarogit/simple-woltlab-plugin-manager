@@ -291,7 +291,7 @@ if [ "$DRY_RUN" -eq 0 ] && [ -d "temp_edit" ]; then
                 log_error_with_context "typescript.sh nicht gefunden in ${TYPESCRIPT_SCRIPT}" "TypeScript-Kompilierung"
                 exit 1
             fi
-            bash "$TYPESCRIPT_SCRIPT"
+            bash "$TYPESCRIPT_SCRIPT" --plugin "$(pwd)/temp_edit"
             TSC_EXIT=$?
             if [ $TSC_EXIT -ne 0 ]; then
                 log_error_with_context "TypeScript-Kompilierung fehlgeschlagen" "typescript.sh Exit-Code: ${TSC_EXIT}"

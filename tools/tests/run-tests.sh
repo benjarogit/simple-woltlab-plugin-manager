@@ -26,6 +26,31 @@ if ! python3 "$SCRIPT_DIR/test_check_language_pip_keys.py"; then
     fail=1
 fi
 
+echo "== python: reference synchronization =="
+if ! python3 "$SCRIPT_DIR/test_reference_sync.py"; then
+    fail=1
+fi
+
+echo "== python: WCF package requirement =="
+if ! python3 "$SCRIPT_DIR/test_core_requirement.py"; then
+    fail=1
+fi
+
+echo "== python: explicit TypeScript package selection =="
+if ! python3 "$SCRIPT_DIR/test_typescript_selection.py"; then
+    fail=1
+fi
+
+echo "== python: ACP template assets =="
+if ! python3 "$SCRIPT_DIR/test_check_acp_template_assets.py"; then
+    fail=1
+fi
+
+echo "== python: page option gates =="
+if ! python3 "$SCRIPT_DIR/test_check_page_option_gates.py"; then
+    fail=1
+fi
+
 if (( fail )); then
     echo "tools/tests: FAILED"
     exit 1

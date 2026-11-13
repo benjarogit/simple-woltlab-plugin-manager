@@ -166,6 +166,7 @@ cmd_list_order_check() {
     local mode="$1"
     local m
     m="$(swpm_family_find_manifest "$MANIFEST_ARG")" || exit 1
+    export SWPM_FAMILY_MANIFEST="$m"
     swpm_family_run_deps "$mode" "$m"
 }
 
@@ -366,6 +367,7 @@ cmd_build() {
     fi
     local m
     m="$(swpm_family_find_manifest "$MANIFEST_ARG")" || exit 1
+    export SWPM_FAMILY_MANIFEST="$m"
     print_info "Family Dep-Check vor Build..."
     if ! swpm_family_run_deps check "$m"; then
         print_error "Family-Check fehlgeschlagen — kein Build"
@@ -426,6 +428,7 @@ cmd_validate() {
     export SWPM_FAMILY_RUN=1
     local m
     m="$(swpm_family_find_manifest "$MANIFEST_ARG")" || exit 1
+    export SWPM_FAMILY_MANIFEST="$m"
     print_info "Family Dep-Check..."
     if ! swpm_family_run_deps check "$m"; then
         print_error "Family-Check fehlgeschlagen"
