@@ -19,7 +19,12 @@
 
 set -e
 
-readonly TOOLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly VERSION="${1:-6.2}"
-
-exec "$TOOLS_DIR/update-woltlab-version.sh" --refs-only "$VERSION"
+TOOLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly TOOLS_DIR
+MAIN_DIR="$(dirname "$TOOLS_DIR")"
+export MAIN_DIR
+# shellcheck source=woltlab-refs-lib.sh
+source "$TOOLS_DIR/woltlab-refs-lib.sh"
+VERSION="$(woltlab_preferred_line)"
+if [[ "${1:-}" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then VERSION="$1"; shift; fi
+exec "$TOOLS_DIR/update-woltlab-version.sh" --refs-only "$@" "$VERSION"

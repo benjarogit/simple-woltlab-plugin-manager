@@ -117,3 +117,7 @@ plugins-integrieren/*
 wsc-cherrymagic/*
 !wsc-cherrymagic/.gitignore
 .venv-docs/
+
+# Versioned upstream checkouts and synchronization reports are local references.
+/.references/
+/reference-lock.json
