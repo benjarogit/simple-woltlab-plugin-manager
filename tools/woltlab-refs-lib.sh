@@ -40,9 +40,22 @@ woltlab_line_from_version() {
     return 1
 }
 
-# Lokal installierte Core-Version (Referenz-ZIP in woltlab-core/)
+# Exact selected line-root, shared by status/update/download. No legacy fallback.
+woltlab_reference_root() {
+    local line="$1" helper_dir
+    helper_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    python3 "$helper_dir/woltlab-reference-selection.py" --root-only --line "$line" \
+        --root "${WOLTLAB_REFERENCES_ROOT:-$MAIN_DIR/.references/$line}"
+}
+
+# Local archive version at a validated line-root; caller may supply that root.
 woltlab_local_core_version() {
-    local f="$MAIN_DIR/woltlab-core/.swpm-core-version"
+    local root="${1:-}" line
+    if [[ -z "$root" ]]; then
+        line="$(woltlab_preferred_line)" || return 1
+        root="$(woltlab_reference_root "$line")" || return 1
+    fi
+    local f="$root/woltlab-core/.swpm-core-version"
     local ver=""
     if [ -f "$f" ]; then
         ver="$(tr -d '[:space:]' < "$f")"
@@ -51,21 +64,12 @@ woltlab_local_core_version() {
         echo "$ver"
         return 0
     fi
-    # Fallback: WCF-Konstante im geklonten Git-Spiegel
-    local constants="$MAIN_DIR/woltlab-github/constants.php"
-    if [ -f "$constants" ]; then
-        ver="$(grep -oE "WCF_VERSION['\"],\s*['\"][0-9]+\.[0-9]+\.[0-9]+" "$constants" 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)"
-        if [ -n "$ver" ]; then
-            echo "$ver"
-            return 0
-        fi
-    fi
     return 1
 }
 
-# Bevorzugte Linie (6.2): .env → lokaler Core → Git-Branch → 6.2
+# Explizit konfigurierte Linie; vorhandene Downloads/Git-Branches sind kein Ziel.
 woltlab_preferred_line() {
-    local line ver branch
+    local line=""
     if [ -f "$TOOLS_DIR/.env" ]; then
         # shellcheck disable=SC1091
         line="$(grep -E '^[[:space:]]*WOLTLAB_REF_LINE=' "$TOOLS_DIR/.env" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '\"'\''[:space:]' || true)"
@@ -75,20 +79,20 @@ woltlab_preferred_line() {
         echo "$line"
         return 0
     fi
-    if ver="$(woltlab_local_core_version 2>/dev/null)"; then
-        if line="$(woltlab_line_from_version "$ver")"; then
-            echo "$line"
-            return 0
-        fi
-    fi
-    if [ -d "$MAIN_DIR/woltlab-github/.git" ]; then
-        branch="$(git -C "$MAIN_DIR/woltlab-github" branch --show-current 2>/dev/null || true)"
-        if [[ "$branch" =~ ^[0-9]+\.[0-9]+$ ]]; then
-            echo "$branch"
-            return 0
-        fi
-    fi
-    echo "6.2"
+    return 1
+}
+
+# Per-package selection is read-only. Export only values shell-quoted by the
+# generic selector; no environment file, latest release or active-path fallback.
+woltlab_select_package_references() {
+    local package="$1" selected
+    local args=(--package "$package" --shell)
+    [[ -z "${WOLTLAB_REFERENCES_ROOT:-}" ]] || args+=(--root "$WOLTLAB_REFERENCES_ROOT")
+    [[ -z "${WOLTLAB_REF_LINE:-}" ]] || args+=(--line "$WOLTLAB_REF_LINE")
+    [[ -z "${WOLTLAB_CORE_REFERENCE:-${WOLTLAB_ROOT:-}}" ]] || args+=(--core "${WOLTLAB_CORE_REFERENCE:-$WOLTLAB_ROOT}")
+    [[ -z "${SWPM_FAMILY_MANIFEST:-}" ]] || args+=(--manifest "$SWPM_FAMILY_MANIFEST")
+    selected="$(python3 "${TOOLS_DIR}/woltlab-reference-selection.py" "${args[@]}")" || return 1
+    eval "$selected"
 }
 
 woltlab_scrape_release_urls() {
@@ -185,15 +189,20 @@ woltlab_detect_online_core() {
 # Status: lokal vs online. Exit 0 = aktuell, 2 = Update verfügbar / fehlend, 1 = Fehler
 # Setzt Globals: SWPM_LOCAL_CORE SWPM_ONLINE_CORE SWPM_ONLINE_URL SWPM_REF_LINE SWPM_UPDATE_AVAILABLE (0/1)
 woltlab_refs_status() {
-    local line fresh_args=()
-    line="$(woltlab_preferred_line)"
-    SWPM_REF_LINE="$line"
+    local line root fresh_args=()
+    SWPM_REF_LINE=""
     SWPM_LOCAL_CORE=""
     SWPM_ONLINE_CORE=""
     SWPM_ONLINE_URL=""
     SWPM_UPDATE_AVAILABLE=0
+    line="$(woltlab_preferred_line)" || return 1
+    SWPM_REF_LINE="$line"
+    root="$(woltlab_reference_root "$line")" || return 1
 
-    SWPM_LOCAL_CORE="$(woltlab_local_core_version 2>/dev/null || true)"
+    SWPM_LOCAL_CORE="$(woltlab_local_core_version "$root" 2>/dev/null || true)"
+    if [[ -n "$SWPM_LOCAL_CORE" && "$(woltlab_line_from_version "$SWPM_LOCAL_CORE")" != "$line" ]]; then
+        return 1  # Explicit mixed-line roots are errors, never a fallback/update.
+    fi
 
     local online
     if ! online="$(woltlab_detect_online_core "$line" "${fresh_args[@]}")"; then

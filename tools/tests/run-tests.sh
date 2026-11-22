@@ -36,6 +36,11 @@ if ! python3 "$SCRIPT_DIR/test_core_requirement.py"; then
     fail=1
 fi
 
+echo "== python: isolated target reference selection =="
+if ! python3 "$SCRIPT_DIR/test_reference_selection.py"; then
+    fail=1
+fi
+
 echo "== python: explicit TypeScript package selection =="
 if ! python3 "$SCRIPT_DIR/test_typescript_selection.py"; then
     fail=1

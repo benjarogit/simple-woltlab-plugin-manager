@@ -6,6 +6,8 @@ import subprocess
 import tempfile
 import unittest
 import os
+import importlib.util
+import shutil
 
 TOOLS = Path(__file__).resolve().parents[1]
 
@@ -102,6 +104,125 @@ class ReferenceSyncTests(unittest.TestCase):
         result = self.run_sync()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.git(self.root / 'sample', 'rev-parse', 'HEAD'), self.git(self.origin, 'rev-parse', 'HEAD'))
+        self.assertEqual(self.run_sync('--check').returncode,0)
+
+    def test_lock_line_conflict_and_symlink_are_protected_without_writes(self):
+        self.root.mkdir()
+        lock=self.root/'reference-lock.json'
+        lock.write_text(json.dumps({'schema':1,'line':'6.2','references':[]}))
+        before=self.fingerprint()
+        self.assertEqual(self.run_sync('--check').returncode,1)
+        self.assertEqual(self.run_sync().returncode,1)
+        self.assertEqual(before,self.fingerprint())
+        lock.unlink()
+        external=self.base/'external';external.mkdir()
+        (self.root/'sample').symlink_to(external,target_is_directory=True)
+        self.assertEqual(self.run_sync().returncode,1)
+        self.assertFalse(list(external.iterdir()))
+
+    def test_local_commit_in_check_mode_writes_nothing(self):
+        self.assertEqual(self.run_sync().returncode,0)
+        checkout=self.root/'sample'
+        self.git(checkout,'config','user.email','tests@example.invalid');self.git(checkout,'config','user.name','Test')
+        (checkout/'source.txt').write_text('local only')
+        self.git(checkout,'commit','-am','local')
+        before=self.fingerprint()
+        self.assertEqual(self.run_sync('--check').returncode,1)
+        self.assertEqual(before,self.fingerprint())
+
+    def test_previous_lock_is_archived_exactly_on_update(self):
+        self.assertEqual(self.run_sync().returncode,0)
+        old=(self.root/'reference-lock.json').read_bytes()
+        (self.origin/'source.txt').write_text('next')
+        self.git(self.origin,'commit','-am','next')
+        self.assertEqual(self.run_sync().returncode,0)
+        self.assertIn(old,[p.read_bytes() for p in (self.root/'history').glob('reference-lock-*.json')])
+
+    def test_direct_sync_rejects_ancestor_symlink_before_network_or_writes(self):
+        outside=self.base/'outside';outside.mkdir()
+        link=self.base/'alias';link.symlink_to(outside,target_is_directory=True)
+        self.root=link/'deep/references'
+        self.sources.write_text(json.dumps({'sample':str(self.base/'no-network-source')}))
+        for args in [(),('--check',)]:
+            result=self.run_sync(*args)
+            self.assertEqual(result.returncode,1)
+            self.assertIn('ancestor symlink',result.stderr)
+            self.assertFalse(list(outside.iterdir()))
+
+    def test_redirected_core_worktree_is_rejected_without_outside_or_lock_writes(self):
+        self.assertEqual(self.run_sync().returncode,0)
+        checkout=self.root/'sample';outside=self.base/'outside';outside.mkdir()
+        (outside/'source.txt').write_text('initial\n')
+        self.git(checkout,'config','core.worktree',str(outside))
+        (self.origin/'source.txt').write_text('upstream second\n');self.git(self.origin,'commit','-am','second')
+        before=self.fingerprint();outside_before=(outside/'source.txt').read_bytes()
+        for args in [('--check',),()]:
+            result=self.run_sync(*args)
+            self.assertEqual(result.returncode,1,result.stdout+result.stderr)
+            self.assertIn('worktree boundary',result.stdout)
+            self.assertEqual(self.fingerprint(),before)
+            self.assertEqual((outside/'source.txt').read_bytes(),outside_before)
+            self.assertEqual((checkout/'source.txt').read_text(),'initial\n')
+
+    def test_worktree_redirect_after_inspect_is_rechecked_before_first_fetch(self):
+        self.assertEqual(self.run_sync().returncode,0)
+        checkout=self.root/'sample'
+        (self.origin/'source.txt').write_text('upstream second\n');self.git(self.origin,'commit','-am','second')
+        spec=importlib.util.spec_from_file_location('sync_boundary_test',TOOLS/'sync-woltlab-git.py')
+        sync=importlib.util.module_from_spec(spec);spec.loader.exec_module(sync)
+        rows=sync.inspect(self.root,'6.3',{'sample':str(self.origin)})
+        self.assertEqual(rows[0]['status'],'update')
+        outside=self.base/'outside';outside.mkdir();(outside/'source.txt').write_text('initial\n')
+        self.git(checkout,'config','core.worktree',str(outside))
+        before=self.fingerprint()
+        self.assertFalse(sync.synchronize(self.root,'6.3',rows))
+        self.assertEqual(self.fingerprint(),before)
+        self.assertEqual((outside/'source.txt').read_text(),'initial\n')
+        self.assertEqual(rows[0]['status'],'error')
+
+    def test_own_core_worktree_setting_and_clean_clone_can_fast_forward(self):
+        self.assertEqual(self.run_sync().returncode,0)
+        checkout=self.root/'sample';self.git(checkout,'config','core.worktree',str(checkout))
+        (self.origin/'source.txt').write_text('allowed second\n');self.git(self.origin,'commit','-am','second')
+        result=self.run_sync()
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertEqual((checkout/'source.txt').read_text(),'allowed second\n')
+        self.assertEqual(self.run_sync('--check').returncode,0)
+
+    def test_redirected_refs_metadata_rejects_inspect_and_after_inspect_before_fetch(self):
+        self.assertEqual(self.run_sync().returncode,0)
+        checkout=self.root/'sample'
+        (self.origin/'source.txt').write_text('upstream second\n');self.git(self.origin,'commit','-am','second')
+        spec=importlib.util.spec_from_file_location('sync_refs_escape',TOOLS/'sync-woltlab-git.py')
+        sync=importlib.util.module_from_spec(spec);spec.loader.exec_module(sync)
+        rows=sync.inspect(self.root,'6.3',{'sample':str(self.origin)})
+        self.assertEqual(rows[0]['status'],'update')
+        outside=self.base/'outside-refs';shutil.move(str(checkout/'.git/refs'),outside)
+        (checkout/'.git/refs').symlink_to(outside,target_is_directory=True)
+        def outside_bytes():
+            return {str(p.relative_to(outside)):p.read_bytes() for p in outside.rglob('*') if p.is_file()}
+        before=outside_bytes();lock=(self.root/'reference-lock.json').read_bytes();head=self.git(checkout,'rev-parse','HEAD')
+        self.assertFalse(sync.synchronize(self.root,'6.3',rows))
+        self.assertEqual(outside_bytes(),before);self.assertEqual((self.root/'reference-lock.json').read_bytes(),lock)
+        self.assertEqual(self.git(checkout,'rev-parse','HEAD'),head)
+        self.assertEqual(sync.inspect(self.root,'6.3',{'sample':str(self.origin)})[0]['status'],'error')
+
+    def test_logs_fetch_head_packed_refs_and_mutable_hardlinks_are_protected(self):
+        self.assertEqual(self.run_sync().returncode,0)
+        checkout=self.root/'sample'
+        spec=importlib.util.spec_from_file_location('sync_metadata_escape',TOOLS/'sync-woltlab-git.py')
+        sync=importlib.util.module_from_spec(spec);spec.loader.exec_module(sync)
+        for name in ['logs','FETCH_HEAD','packed-refs']:
+            source=checkout/'.git'/name
+            if not source.exists(): source.write_bytes(b'fixture metadata')
+            outside=self.base/('outside-'+name);shutil.move(str(source),outside)
+            source.symlink_to(outside,target_is_directory=outside.is_dir())
+            with self.subTest(name=name),self.assertRaisesRegex(ValueError,'metadata symlink'):sync.git_boundary(checkout)
+            source.unlink();shutil.move(str(outside),source)
+        source=checkout/'.git/FETCH_HEAD';outside=self.base/'linked-fetch-head';os.link(source,outside)
+        before=outside.read_bytes()
+        with self.assertRaisesRegex(ValueError,'metadata hardlink'):sync.git_boundary(checkout)
+        self.assertEqual(outside.read_bytes(),before)
 
 
 if __name__ == '__main__':

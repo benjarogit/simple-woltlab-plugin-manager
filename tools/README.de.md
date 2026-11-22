@@ -12,7 +12,7 @@ Im Ordner `tools/` stecken die Skripte für den Alltag: Plugin bauen, prüfen, T
 
 **Plattformen:** Linux, macOS, Windows (WSL2 oder Git Bash). Unter Windows aus cmd/Explorer: `tools.cmd`. Details: [docs/CROSS-PLATFORM.de.md](docs/CROSS-PLATFORM.de.md).
 
-**Hinweis:** `tools/woltlab-plugin-recovery/` ist ein separates Recovery-Hilfsmittel — nicht Teil des normalen Build-/Validate-Menüs.
+**Hinweis:** Das [eigenständige Recovery-Werkzeug](https://github.com/benjarogit/sc-woltlab-plugin-recovery) liegt lokal als Nachbarcheckout `../sc-woltlab-plugin-recovery/` relativ zum SWPM-Root. Es ist kein Bestandteil des normalen Build-/Validate-Menüs.
 
 ---
 
@@ -310,3 +310,7 @@ Vollständiger Index / Navigation: **[MkDocs-Site](https://benjarogit.github.io/
 - **Logging:** Zentrales Debug-Log unter `tools/docs/logs/woltlab-dev-debug.log`. Siehe [LOGGING.de.md](docs/LOGGING.de.md) / [LOGGING.en.md](docs/LOGGING.en.md).
 - **Sprache:** Die Menüsprache lässt sich über `WOLTLAB_LANG` in `tools/.env` oder die Menüoption „Sprache wechseln“ (L) auf DE oder EN stellen. Übersetzungen liegen in `tools/language/de.txt` und `tools/language/en.txt` (Schlüssel=Wert). Die Funktion `tr "key"` in `common.sh` liefert den Text für die aktuelle Sprache; Skripte können schrittweise darauf umgestellt werden.
 - **Repo-Root:** Alle Befehle setzen voraus, dass du dich im Repository-Root (der Ordner, der `tools/` enthält) befindest, sofern nicht anders angegeben.
+
+## Versionsgerechte Referenzen
+
+Zielversion, getrennte Referenzbestände und Prüfgrenzen: [Versionsgerechte WoltLab-Referenzen](docs/VERSIONED-REFERENCES.de.md).

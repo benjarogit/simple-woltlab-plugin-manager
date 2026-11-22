@@ -176,7 +176,7 @@ Für den Alltag selten direkt nötig; werden von den Kern-Skripten genutzt:
 | `sync-woltlab-references.sh` | Nur Git-Spiegel (Docs/WCF/d.ts/Beispiele) |
 | `manager-push.env` | optionale lokale Overrides (gitignored) |
 
-`tools/woltlab-plugin-recovery/` ist ein separates Recovery-Hilfsmittel — nicht Teil des normalen Build-/Validate-Menüs.
+Das [eigenständige Recovery-Werkzeug](https://github.com/benjarogit/sc-woltlab-plugin-recovery) liegt lokal als Nachbarcheckout `../sc-woltlab-plugin-recovery/` relativ zum SWPM-Root. Es ist kein Bestandteil des normalen Build-/Validate-Menüs.
 
 ### Bei Fehlern
 

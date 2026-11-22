@@ -12,7 +12,7 @@ The `tools/` folder holds the day-to-day scripts: build a plugin, validate it, c
 
 **Platforms:** Linux, macOS, Windows (WSL2 or Git Bash). From cmd/Explorer on Windows: `tools.cmd`. Details: [docs/CROSS-PLATFORM.en.md](docs/CROSS-PLATFORM.en.md).
 
-**Note:** `tools/woltlab-plugin-recovery/` is a separate recovery helper — not part of the normal build/validate menu.
+**Note:** The [independent Recovery tool](https://github.com/benjarogit/sc-woltlab-plugin-recovery) has its own sibling checkout, `../sc-woltlab-plugin-recovery/` relative to the SWPM root. It is not part of the normal build/validate menu.
 
 ---
 
@@ -308,3 +308,7 @@ Full index / navigation: **[MkDocs site](https://benjarogit.github.io/simple-wol
 - **Logging:** Central debug log at `tools/docs/logs/woltlab-dev-debug.log`. See [LOGGING.en.md](docs/LOGGING.en.md) / [LOGGING.de.md](docs/LOGGING.de.md).
 - **Language:** Menu language can be set to DE or EN via `WOLTLAB_LANG` in `tools/.env` or the menu option “Switch language” (L). Translations live in `tools/language/de.txt` and `tools/language/en.txt` (key=value). The `tr "key"` function in `common.sh` returns the string for the current language; scripts can be migrated to use it step by step.
 - **Repo root:** All commands assume you are in the repository root (the folder that contains `tools/`) unless stated otherwise.
+
+## Version-specific references
+
+Target selection, isolated reference sets and validation limits: [Version-specific WoltLab references](docs/VERSIONED-REFERENCES.en.md).

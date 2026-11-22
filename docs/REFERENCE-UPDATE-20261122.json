@@ -1,0 +1,95 @@
+{
+  "date": "2026-11-22",
+  "purpose": "Historical provenance of an explicitly selected side-by-side reference sync, not an automatic default or installed-Suite upgrade",
+  "new_isolated_git_references": {
+    "line": "6.3",
+    "references": [
+      {
+        "name": "woltlab-github",
+        "url": "https://github.com/WoltLab/WCF",
+        "branch": "6.3",
+        "local_commit": "a8c6ce7631ae760206097d2d81895a15bbae3916"
+      },
+      {
+        "name": "woltlab-docs",
+        "url": "https://github.com/WoltLab/docs.woltlab.com",
+        "branch": "6.3",
+        "local_commit": "364332d8a3275e6c7d8c11a2b5e1c8e12d1f10d0"
+      },
+      {
+        "name": "woltlab-d-ts",
+        "url": "https://github.com/WoltLab/d.ts",
+        "branch": "6.3",
+        "local_commit": "bd1e267e1932cc2455a0521d68fc8db95066f9c2"
+      },
+      {
+        "name": "woltlab-exporter",
+        "url": "https://github.com/WoltLab/com.woltlab.wcf.exporter",
+        "branch": "6.3",
+        "local_commit": "971b5f544ea9d2cd7e27f628c83283c078c6e12a"
+      },
+      {
+        "name": "woltlab-conversation",
+        "url": "https://github.com/WoltLab/com.woltlab.wcf.conversation",
+        "branch": "6.3",
+        "local_commit": "9887a318a6e3b16d1496748b2b302f9d8fac87cb"
+      },
+      {
+        "name": "woltlab-legal-notice",
+        "url": "https://github.com/WoltLab/com.woltlab.wcf.legalNotice",
+        "branch": "6.3",
+        "local_commit": "a65723db27b7bfbce07183ed9332324f9d2b06a3"
+      }
+    ]
+  },
+  "preserved_legacy_root_git_references": {
+    "line": "6.3",
+    "references": [
+      {
+        "name": "woltlab-github",
+        "url": "https://github.com/WoltLab/WCF",
+        "branch": "6.3",
+        "local_commit": "bdf58d8d630c9add1ff124e31e2788a918bd1c29"
+      },
+      {
+        "name": "woltlab-docs",
+        "url": "https://github.com/WoltLab/docs.woltlab.com",
+        "branch": "6.3",
+        "local_commit": "c65307e9a66f170ffa51768d27bcaad3c8fb3b89"
+      },
+      {
+        "name": "woltlab-d-ts",
+        "url": "https://github.com/WoltLab/d.ts",
+        "branch": "6.3",
+        "local_commit": "8b91862983551f0ac609338378e1372b94c3b3e1"
+      },
+      {
+        "name": "woltlab-exporter",
+        "url": "https://github.com/WoltLab/com.woltlab.wcf.exporter",
+        "branch": "6.3",
+        "local_commit": "650b6da089ed9b7f071e2daccb4e072ddfca38a9"
+      },
+      {
+        "name": "woltlab-conversation",
+        "url": "https://github.com/WoltLab/com.woltlab.wcf.conversation",
+        "branch": "6.3",
+        "local_commit": "88e39ff536661f6d16c598b8be340523d4c04187"
+      },
+      {
+        "name": "woltlab-legal-notice",
+        "url": "https://github.com/WoltLab/com.woltlab.wcf.legalNotice",
+        "branch": "6.3",
+        "local_commit": "a65723db27b7bfbce07183ed9332324f9d2b06a3"
+      }
+    ]
+  },
+  "preserved_legacy_core_download": {
+    "version": "6.2.6",
+    "archive": "woltlab-core/WCFSetup.tar.gz",
+    "sha256": "61ffc46c257ab25b551c35c68b0f00a09b8e322274b0a8817a1f04412f0362b5"
+  },
+  "new_stable_core_archive_downloaded": false,
+  "development_line_sync_mode": "--refs-only 6.3",
+  "benjaro_installed_core_modified": false,
+  "selection": "Choose package-compatible line explicitly; local lock paths are generated per checkout and not portable configuration."
+}
