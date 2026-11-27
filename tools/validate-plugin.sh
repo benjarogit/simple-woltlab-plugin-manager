@@ -123,6 +123,10 @@ cd "$PLUGIN_DIR" || {
     exit 1
 }
 
+# Same package-derived, pinned reference contract as the builder.
+source "$TOOLS_DIR/woltlab-refs-lib.sh"
+woltlab_select_package_references "$PLUGIN_DIR" || exit 1
+
 print_header
 echo ""
 echo -e "${CYAN}Verzeichnis:${NC} $PLUGIN_DIR"

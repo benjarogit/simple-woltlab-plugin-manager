@@ -10,7 +10,7 @@
 - `woltlab-*`-Referenzcheckouts sind eigene Repositories und keine Manager-Quelldateien. Lokale Änderungen nicht verwerfen.
 - `bash tools/tests/run-tests.sh` ist der bestehende lokale Testeinstieg. Bei Werkzeugänderungen sinnvolle Regressionstests ergänzen; bei Bash zusätzlich `bash -n` und, soweit verfügbar, Shellcheck.
 - 6.3-Unterstützung nur mit konkreten Prüfungen belegen; Syntaxprüfung ist keine API-/Installationsprüfung. Release-ZIP, Git-Entwicklungsstand und Testbuild auseinanderhalten.
-- `tools/woltlab-plugin-recovery/` ist ein eigener Werkzeugbereich: dortiges `dev/HANDOFF.md` und lokale Regeln lesen. Build/Publisher/Deploy sind keine lesenden Checks.
+- Das eigene Recovery-Werkzeug liegt im eigenständigen Nachbarrepository `../sc-woltlab-plugin-recovery/`: dort `AGENTS.md` und `dev/HANDOFF.md` lesen. SWPM besitzt dessen Quellen nicht mehr; Build/Publisher/Deploy sind keine lesenden Checks.
 - Keine `.env`, Zugangsdaten, lokalen Suite-Dateien, Cache-/Auth-Daten oder fremden Repositories committen.
 - Geprüfte Änderungen in überschaubaren Commits sichern; keine ungesichteten Altstände pauschal pushen. Veröffentlichung ist ein eigener Schritt.
 - Handoff nach Änderungen aktualisieren: Problem, Änderung, Tests, Grenzen, nächster Schritt.

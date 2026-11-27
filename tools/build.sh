@@ -260,6 +260,14 @@ fi
 
 cd "${PROJECT_ROOT}"
 
+# Select this package's pinned target before any compiler or native asset check.
+# Dry-run only inventories packaging inputs and establishes no API compatibility.
+if [ "$DRY_RUN" -eq 0 ]; then
+    TOOLS_DIR="$SCRIPT_DIR"
+    source "$SCRIPT_DIR/woltlab-refs-lib.sh"
+    woltlab_select_package_references "$PROJECT_ROOT" || exit 1
+fi
+
 # Validierung
 if [[ ! "$VERSION_TYPE" =~ ^(patch|minor|major|same)$ ]]; then
     print_error "Ungueltiger Version-Typ '$VERSION_TYPE'"

@@ -177,7 +177,7 @@ Rarely needed day to day; used by core scripts:
 | `manager-push.env` | optional local overrides (gitignored) |
 | `manager-push.env` | optional local overrides (gitignored) |
 
-`tools/woltlab-plugin-recovery/` is a separate recovery helper — not part of the normal build/validate menu.
+The [independent Recovery tool](https://github.com/benjarogit/sc-woltlab-plugin-recovery) has its own sibling checkout, `../sc-woltlab-plugin-recovery/` relative to the SWPM root. It is not part of the normal build/validate menu.
 
 ### When something fails
 
